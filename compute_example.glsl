@@ -5,6 +5,7 @@
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
 layout(rgba8, binding = 0) restrict uniform image2D colorOutput;
+
 layout(binding = 1, std430) restrict buffer CameraBuffer {
     float data[];
 }
@@ -16,7 +17,6 @@ camera_xform;
 #define SDF_SHAPE_BOX_ROUNDED    3
 
 /*
-
 Stack-based SDF calculator.
 
 Locals:
@@ -76,6 +76,9 @@ layout(binding = 2, std430) restrict buffer ProgramBuffer {
     int data[];
 }
 program;
+
+layout(r32f, binding = 3) restrict uniform image2D depthOutput;
+layout(rgba32f, binding = 4) restrict uniform image2D normalOutput;
 
 float smoothUnion( float a, float b, float k ) {
     float h = max( k-abs(a-b), 0.0 )/k;
@@ -251,17 +254,17 @@ void main() {
    
 	vec3 ro = vec3(camera_xform.data[9], camera_xform.data[10], camera_xform.data[11]);
    
-    // render    
-    vec3 tot = vec3(0.0);
+	// render    
+	vec3 tot = vec3(0.0);
 
-	vec2 p = (2.0*fragCoord-iResolution.xy)/iResolution.y;
+	vec2 p = (2.0*(vec2(fragCoord) + vec2(0.5, 0.5))-iResolution.xy)/iResolution.y;
 
 
 	// create view ray
 	vec3 rd = normalize( p.x*uu + p.y*vv + 1.5*ww );
 
 	// raymarch
-	const float tmax = 100.0;
+	const float tmax = 10.0;
 	float t = 0.0;
 	for( int i=0; i<256; i++ )
 	{
@@ -274,12 +277,13 @@ void main() {
 
 	// shading/lighting	
 	vec3 col = vec3(0.0);
+	vec3 nor;
 	if( t<tmax )
 	{
 		vec3 pos = ro + t*rd;
-		vec3 nor = calcNormal(pos);
+		nor = calcNormal(pos);
 		
-		float dif = clamp( dot(nor,vec3(0.57703)), 0.05, 1.0 );
+		float dif = clamp( dot(nor, vec3(0.57703)), 0.05, 1.0 );
 		vec3 diffuseColor = map(pos).xyz;
 		
 		col = diffuseColor*dif;
@@ -291,5 +295,7 @@ void main() {
 	col = sqrt( col );
 	tot += col;
 	
-	imageStore(colorOutput, fragCoord, vec4( tot, alpha ));
+	imageStore(colorOutput, fragCoord, vec4( col, alpha ));
+	imageStore(depthOutput, fragCoord, vec4( t, 0.0, 0.0, 0.0 ));
+	imageStore(normalOutput, fragCoord, vec4( nor, alpha ));
 }

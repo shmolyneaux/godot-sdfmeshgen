@@ -1,8 +1,11 @@
-[gd_scene load_steps=9 format=3 uid="uid://bj6xbavllu22s"]
+[gd_scene load_steps=10 format=3 uid="uid://bj6xbavllu22s"]
 
 [ext_resource type="Script" path="res://Editor.gd" id="1_2bhxo"]
-[ext_resource type="PackedScene" path="res://SdfViewer.tscn" id="1_s5p87"]
+[ext_resource type="PackedScene" uid="uid://1ok8h0bhmx3c" path="res://SdfViewer.tscn" id="1_s5p87"]
 [ext_resource type="Script" path="res://CameraController.gd" id="2_g7nfg"]
+[ext_resource type="PackedScene" uid="uid://ciqhfcwpqp360" path="res://Cursor3D.tscn" id="4_asfei"]
+
+[sub_resource type="World3D" id="World3D_12law"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_nskuu"]
 size = Vector2(5, 5)
@@ -15,25 +18,25 @@ viewport_path = NodePath("WidgetViewport")
 
 [sub_resource type="World3D" id="World3D_hap5c"]
 
-[sub_resource type="World3D" id="World3D_12law"]
-
 [node name="Editor" type="Node3D"]
 script = ExtResource("1_2bhxo")
 
-[node name="Control" type="Control" parent="."]
-layout_mode = 3
-anchors_preset = 9
-anchor_bottom = 1.0
-offset_right = 476.0
-grow_vertical = 2
+[node name="WidgetViewport" type="SubViewport" parent="."]
+world_3d = SubResource("World3D_12law")
+transparent_bg = true
+msaa_3d = 3
+screen_space_aa = 1
+size = Vector2i(2048, 1024)
 
-[node name="Label" type="Label" parent="Control"]
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 23.0
-text = "Press \"C\" to create a sphere
+[node name="Node3D" type="Node3D" parent="WidgetViewport"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2.5)
 
-Hold RMB for FPS mode (WASD, Shift, Ctrl, Space)"
+[node name="Camera3D" type="Camera3D" parent="WidgetViewport/Node3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 2.5)
+fov = 67.5
+
+[node name="3D Cursor" parent="WidgetViewport" instance=ExtResource("4_asfei")]
+unique_name_in_owner = true
 
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 5)
@@ -66,8 +69,32 @@ texture = SubResource("ViewportTexture_r6lm8")
 [node name="WidgetViewportTexture" type="TextureRect" parent="."]
 offset_right = 2048.0
 offset_bottom = 1024.0
-mouse_filter = 2
 texture = SubResource("ViewportTexture_isaaf")
+
+[node name="Control" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 9
+anchor_bottom = 1.0
+offset_right = 476.0
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Control"]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="Label" type="Label" parent="Control/VBoxContainer"]
+layout_mode = 2
+text = "Hold RMB for FPS mode (WASD, Shift, Ctrl, Space)
+
+Press \"C\" to create a sphere
+Use scroll where to adjust size"
+
+[node name="ColorPickerButton" type="ColorPickerButton" parent="Control/VBoxContainer"]
+layout_mode = 2
+text = "test
+"
+color = Color(1, 1, 1, 1)
 
 [node name="SdfViewport" type="SubViewport" parent="."]
 world_3d = SubResource("World3D_hap5c")
@@ -79,14 +106,5 @@ size = Vector2i(2048, 1024)
 unique_name_in_owner = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 5)
 
-[node name="WidgetViewport" type="SubViewport" parent="."]
-world_3d = SubResource("World3D_12law")
-transparent_bg = true
-size = Vector2i(2048, 1024)
-
-[node name="Node3D" type="Node3D" parent="WidgetViewport"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2.5)
-
-[node name="Camera3D" type="Camera3D" parent="WidgetViewport/Node3D"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 2.5)
-fov = 67.5
+[connection signal="color_changed" from="Control/VBoxContainer/ColorPickerButton" to="." method="update_shape_color"]
+[connection signal="full_res_update" from="SdfViewport/SdfViewer" to="." method="_update_cursor"]

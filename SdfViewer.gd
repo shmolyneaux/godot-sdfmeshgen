@@ -2,9 +2,7 @@ extends Camera3D
 
 class_name Sdf
 
-var shader: RID
-var color_output_format : RDTextureFormat
-var half_color_output_format : RDTextureFormat
+signal full_res_update
 
 var sdf_objects = []:
 	get:
@@ -23,15 +21,35 @@ var sdf_objects = []:
 		rd.buffer_update(object_info_rid, 0, object_data_bytes.size(), object_data_bytes)
 		viewport_needs_update = true
 
+var shader: RID
 var rd := RenderingServer.create_local_rendering_device()
+
 var uniform_set
 var half_uniform_set
 
+var color_output_format : RDTextureFormat
 var color_output_rid
 var color_output_uniform
 
+var half_color_output_format : RDTextureFormat
 var half_color_output_rid
 var half_color_output_uniform
+
+var depth_output_format : RDTextureFormat
+var depth_output_rid
+var depth_output_uniform
+
+var half_depth_output_format : RDTextureFormat
+var half_depth_output_rid
+var half_depth_output_uniform
+
+var normal_output_format : RDTextureFormat
+var normal_output_rid
+var normal_output_uniform
+
+var half_normal_output_format : RDTextureFormat
+var half_normal_output_rid
+var half_normal_output_uniform
 
 var camera_xform_rid
 var camera_xform_uniform
@@ -40,6 +58,12 @@ var object_info_rid
 var object_info_uniform
 
 var pipeline
+
+var color_data: PackedFloat32Array
+var depth_data: PackedFloat32Array
+var normal_data: PackedFloat32Array
+var data_width: int
+var data_height: int
 
 var viewport_needs_update = true
 var last_xform = Transform3D()
@@ -262,13 +286,48 @@ class SdfColor:
 		return Sdf.color_op(color) + d.to_ops()
 
 func screen_to_depth(screen_pos):
+	assert(0.0 <= screen_pos.x)
+	assert(0.0 <= screen_pos.y)
+	assert(screen_pos.y <= 1.0)
+	assert(screen_pos.x <= 1.0)
+	
+	var x = int(screen_pos.x*data_width)
+	var y = int(screen_pos.y*data_height)
+	
+	var idx = y*data_width + x
+	
+	if depth_data:
+		return depth_data[idx]
+	
+	return null
+	
+func screen_to_normal(screen_pos):
+	assert(0.0 <= screen_pos.x)
+	assert(0.0 <= screen_pos.y)
+	assert(screen_pos.y <= 1.0)
+	assert(screen_pos.x <= 1.0)
+	
+	var x = int(screen_pos.x*data_width)
+	var y = int(screen_pos.y*data_height)
+	
+	var idx = (y*data_width + x)*4
+	
+	if normal_data.size() and normal_data[idx+3] != 0.0:
+		return Vector3(
+			normal_data[idx+0],
+			normal_data[idx+1],
+			normal_data[idx+2],
+		)
+	
 	return null
 
 func _ready():
+	var width = 2048
+	var height = 1024
 	color_output_format = RDTextureFormat.new()
 	color_output_format.format = RenderingDevice.DATA_FORMAT_R8G8B8A8_UNORM
-	color_output_format.width = 2048
-	color_output_format.height = 1024
+	color_output_format.width = width
+	color_output_format.height = height
 	color_output_format.usage_bits = \
 			RenderingDevice.TEXTURE_USAGE_STORAGE_BIT + \
 			RenderingDevice.TEXTURE_USAGE_CAN_UPDATE_BIT + \
@@ -276,12 +335,49 @@ func _ready():
 			
 	half_color_output_format = RDTextureFormat.new()
 	half_color_output_format.format = RenderingDevice.DATA_FORMAT_R8G8B8A8_UNORM
-	half_color_output_format.width = color_output_format.width/16
-	half_color_output_format.height = color_output_format.height/16
+	half_color_output_format.width = width/16
+	half_color_output_format.height = height/16
 	half_color_output_format.usage_bits = \
 			RenderingDevice.TEXTURE_USAGE_STORAGE_BIT + \
 			RenderingDevice.TEXTURE_USAGE_CAN_UPDATE_BIT + \
 			RenderingDevice.TEXTURE_USAGE_CAN_COPY_FROM_BIT
+	
+	depth_output_format = RDTextureFormat.new()
+	depth_output_format.format = RenderingDevice.DATA_FORMAT_R32_SFLOAT
+	depth_output_format.width = width
+	depth_output_format.height = height
+	depth_output_format.usage_bits = \
+			RenderingDevice.TEXTURE_USAGE_STORAGE_BIT + \
+			RenderingDevice.TEXTURE_USAGE_CAN_UPDATE_BIT + \
+			RenderingDevice.TEXTURE_USAGE_CAN_COPY_FROM_BIT
+			
+	half_depth_output_format = RDTextureFormat.new()
+	half_depth_output_format.format = RenderingDevice.DATA_FORMAT_R32_SFLOAT
+	half_depth_output_format.width = width/16
+	half_depth_output_format.height = height/16
+	half_depth_output_format.usage_bits = \
+			RenderingDevice.TEXTURE_USAGE_STORAGE_BIT + \
+			RenderingDevice.TEXTURE_USAGE_CAN_UPDATE_BIT + \
+			RenderingDevice.TEXTURE_USAGE_CAN_COPY_FROM_BIT
+	
+	normal_output_format = RDTextureFormat.new()
+	normal_output_format.format = RenderingDevice.DATA_FORMAT_R32G32B32A32_SFLOAT
+	normal_output_format.width = width
+	normal_output_format.height = height
+	normal_output_format.usage_bits = \
+			RenderingDevice.TEXTURE_USAGE_STORAGE_BIT + \
+			RenderingDevice.TEXTURE_USAGE_CAN_UPDATE_BIT + \
+			RenderingDevice.TEXTURE_USAGE_CAN_COPY_FROM_BIT
+			
+	half_normal_output_format = RDTextureFormat.new()
+	half_normal_output_format.format = RenderingDevice.DATA_FORMAT_R32G32B32A32_SFLOAT
+	half_normal_output_format.width = width/16
+	half_normal_output_format.height = height/16
+	half_normal_output_format.usage_bits = \
+			RenderingDevice.TEXTURE_USAGE_STORAGE_BIT + \
+			RenderingDevice.TEXTURE_USAGE_CAN_UPDATE_BIT + \
+			RenderingDevice.TEXTURE_USAGE_CAN_COPY_FROM_BIT
+	
 	
 	# Load GLSL shader
 	var shader_file := load("res://compute_example.glsl")
@@ -290,6 +386,10 @@ func _ready():
 	
 	color_output_rid = rd.texture_create(color_output_format, RDTextureView.new())
 	half_color_output_rid = rd.texture_create(half_color_output_format, RDTextureView.new())
+	depth_output_rid = rd.texture_create(depth_output_format, RDTextureView.new())
+	half_depth_output_rid = rd.texture_create(half_depth_output_format, RDTextureView.new())
+	normal_output_rid = rd.texture_create(normal_output_format, RDTextureView.new())
+	half_normal_output_rid = rd.texture_create(half_normal_output_format, RDTextureView.new())
 
 	color_output_uniform = RDUniform.new()
 	color_output_uniform.uniform_type = RenderingDevice.UNIFORM_TYPE_IMAGE
@@ -300,6 +400,26 @@ func _ready():
 	half_color_output_uniform.uniform_type = RenderingDevice.UNIFORM_TYPE_IMAGE
 	half_color_output_uniform.binding = 0  # This matches the binding in the shader.
 	half_color_output_uniform.add_id(half_color_output_rid)
+
+	depth_output_uniform = RDUniform.new()
+	depth_output_uniform.uniform_type = RenderingDevice.UNIFORM_TYPE_IMAGE
+	depth_output_uniform.binding = 3  # This matches the binding in the shader.
+	depth_output_uniform.add_id(depth_output_rid)
+	
+	half_depth_output_uniform = RDUniform.new()
+	half_depth_output_uniform.uniform_type = RenderingDevice.UNIFORM_TYPE_IMAGE
+	half_depth_output_uniform.binding = 3  # This matches the binding in the shader.
+	half_depth_output_uniform.add_id(half_depth_output_rid)
+
+	normal_output_uniform = RDUniform.new()
+	normal_output_uniform.uniform_type = RenderingDevice.UNIFORM_TYPE_IMAGE
+	normal_output_uniform.binding = 4  # This matches the binding in the shader.
+	normal_output_uniform.add_id(normal_output_rid)
+	
+	half_normal_output_uniform = RDUniform.new()
+	half_normal_output_uniform.uniform_type = RenderingDevice.UNIFORM_TYPE_IMAGE
+	half_normal_output_uniform.binding = 4  # This matches the binding in the shader.
+	half_normal_output_uniform.add_id(half_normal_output_rid)
 
 	var camera_data := PackedFloat32Array(
 		[
@@ -337,8 +457,8 @@ func _ready():
 
 	shader = rd.shader_create_from_spirv(shader_spirv)
 	pipeline = rd.compute_pipeline_create(shader)
-	uniform_set = rd.uniform_set_create([color_output_uniform, camera_xform_uniform, object_info_uniform], shader, 0)
-	half_uniform_set = rd.uniform_set_create([half_color_output_uniform, camera_xform_uniform, object_info_uniform], shader, 0)
+	uniform_set = rd.uniform_set_create([color_output_uniform, camera_xform_uniform, object_info_uniform, depth_output_uniform, normal_output_uniform], shader, 0)
+	half_uniform_set = rd.uniform_set_create([half_color_output_uniform, camera_xform_uniform, object_info_uniform, half_depth_output_uniform, half_normal_output_uniform], shader, 0)
 
 
 # Called when the node enters the scene tree for the first time.
@@ -398,18 +518,42 @@ func _process(delta):
 	
 	rd.sync()
 
+	var color_rid
+	var depth_rid
+	var normal_rid
+	var width
+	var height
 	if half_resolution:
-		var output_bytes := rd.texture_get_data(half_color_output_rid, 0)
-		var output_time := rd.buffer_get_data(camera_xform_rid, 0)
-		var island_img := Image.create_from_data(half_color_output_format.width, half_color_output_format.height, false, Image.FORMAT_RGBA8, output_bytes)
-		var island_tex := ImageTexture.create_from_image(island_img)
-		%TextureRect.texture = island_tex
+		color_rid = half_color_output_rid
+		depth_rid = half_depth_output_rid
+		normal_rid = half_normal_output_rid
+		width = half_depth_output_format.width
+		height = half_depth_output_format.height
 	else:
-		var output_bytes := rd.texture_get_data(color_output_rid, 0)
-		var output_time := rd.buffer_get_data(camera_xform_rid, 0)
-		var island_img := Image.create_from_data(color_output_format.width, color_output_format.height, false, Image.FORMAT_RGBA8, output_bytes)
-		var island_tex := ImageTexture.create_from_image(island_img)
-		%TextureRect.texture = island_tex
-		
+		color_rid = color_output_rid
+		depth_rid = depth_output_rid
+		normal_rid = normal_output_rid
+		width = depth_output_format.width
+		height = depth_output_format.height
+
+	var color_output_bytes := rd.texture_get_data(color_rid, 0)
+	var depth_output_bytes := rd.texture_get_data(depth_rid, 0)
+	var normal_output_bytes := rd.texture_get_data(normal_rid, 0)
+	
+	color_data = color_output_bytes.to_float32_array()
+	depth_data = depth_output_bytes.to_float32_array()
+	normal_data = normal_output_bytes.to_float32_array()
+	data_height = height
+	data_width = width
+	
+	var color_image = Image.create_from_data(width, height, false, Image.FORMAT_RGBA8, color_output_bytes)
+	#var depth_image = Image.create_from_data(depth_output_format.width, depth_output_format.height, false, Image.FORMAT_RF, depth_output_bytes)
+	#var normal_image = Image.create_from_data(normal_output_format.width, normal_output_format.height, false, Image.FORMAT_RGBAF, normal_output_bytes)
+	
+	%TextureRect.texture = ImageTexture.create_from_image(color_image)
+	
 	last_update_was_half_rez = half_resolution
 	viewport_needs_update = false
+	
+	if not half_resolution:
+		full_res_update.emit()
