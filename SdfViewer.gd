@@ -121,10 +121,23 @@ static func sdf_from_value(value):
 	var sdf = null
 	if value["shape"] == "sphere":
 		sdf = SdfSphere.new(value["radius"])
-	if value["shape"] == "box":
+	elif value["shape"] == "box":
 		sdf = SdfBox.new(value["size"])
+	elif value["shape"] == "round_cone":
+		sdf = SdfRoundCone.new(value["a"], value["b"], value["r1"], value["r2"])
+		assert("position" not in value or value["position"] == Vector3.ZERO)
+		assert("rotation" not in value or value["rotation"] == Transform3D())
+	elif value["shape"] == "quad_bezier":
+		sdf = SdfQuadBezier.new(value["a"], value["b"], value["c"])
+		assert("position" not in value or value["position"] == Vector3.ZERO)
+		assert("rotation" not in value or value["rotation"] == Transform3D())
+	else:
+		assert(false)
+		
+	if "rotation" in value and value["rotation"] != Transform3D():
+		sdf = SdfRotate.new(sdf, value["rotation"])
 
-	if value["position"] != Vector3.ZERO:
+	if "position" in value and value["position"] != Vector3.ZERO:
 		sdf = SdfTranslate.new(sdf, value["position"])
 		
 	if "color" in value:
@@ -157,6 +170,16 @@ static func smooth_intersection_op(radius: float):
 static func move_op(amount: Vector3):
 	return sdf_op(101, [amount.x, amount.y, amount.z])
 	
+static func rot_op(xform: Transform3D):
+	return sdf_op(
+		105,
+		[
+			xform.basis.x.x, xform.basis.x.y, xform.basis.x.z,
+			xform.basis.y.x, xform.basis.y.y, xform.basis.y.z,
+			xform.basis.z.x, xform.basis.z.y, xform.basis.z.z,
+		]
+	)
+	
 static func pop_pos_op():
 	return sdf_op(100, [])
 	
@@ -165,7 +188,25 @@ static func sphere_op(radius: float):
 static func box_op(b: Vector3):
 	return sdf_op(201, [b.x, b.y, b.z])
 static func ellipsoid_op(radius: Vector3):
-	return sdf_op(201, [radius.x, radius.y, radius.z])
+	return sdf_op(202, [radius.x, radius.y, radius.z])
+static func round_cone_op(a: Vector3, b: Vector3, r1: float, r2: float):
+	return sdf_op(
+		203,
+		[
+			a.x, a.y, a.z,
+			b.x, b.y, b.z,
+			r1, r2
+		]
+	)
+static func quad_bezier_op(a: Vector3, b: Vector3, c: Vector3):
+	return sdf_op(
+		204,
+		[
+			a.x, a.y, a.z,
+			b.x, b.y, b.z,
+			c.x, c.y, c.z,
+		]
+	)
 	
 static func puff_op(radius: float):
 	return sdf_op(300, [radius])
@@ -262,6 +303,34 @@ class SdfBox:
 	
 	func to_ops():
 		return Sdf.box_op(b)
+		
+class SdfRoundCone:
+	var a
+	var b
+	var r1
+	var r2
+	
+	func _init(a: Vector3, b: Vector3, r1: float, r2: float):
+		self.a = a
+		self.b = b
+		self.r1 = r1
+		self.r2 = r2
+	
+	func to_ops():
+		return Sdf.round_cone_op(a, b, r1, r2)
+		
+class SdfQuadBezier:
+	var a
+	var b
+	var c
+	
+	func _init(a: Vector3, b: Vector3, c: Vector3):
+		self.a = a
+		self.b = b
+		self.c = c
+	
+	func to_ops():
+		return Sdf.quad_bezier_op(a, b, c)
 
 class SdfTranslate:
 	var d
@@ -273,6 +342,17 @@ class SdfTranslate:
 	
 	func to_ops():
 		return Sdf.move_op(amount) + d.to_ops() + Sdf.move_op(-amount)
+
+class SdfRotate:
+	var d
+	var amount
+	
+	func _init(d, amount):
+		self.d = d
+		self.amount = amount
+	
+	func to_ops():
+		return Sdf.rot_op(amount) + d.to_ops() + Sdf.pop_pos_op()
 
 class SdfColor:
 	var d

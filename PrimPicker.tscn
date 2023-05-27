@@ -1,0 +1,42 @@
+[gd_scene load_steps=7 format=3 uid="uid://ch7wfct32xk6o"]
+
+[ext_resource type="Material" uid="uid://cqcjwrg6xqmn6" path="res://ShapeHighlightMat.tres" id="1_al0d2"]
+[ext_resource type="Script" path="res://PrimPicker.gd" id="1_huef6"]
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_rkdup"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_5el4r"]
+
+[sub_resource type="SphereMesh" id="SphereMesh_nqmhk"]
+material = ExtResource("1_al0d2")
+
+[sub_resource type="BoxMesh" id="BoxMesh_3u8lg"]
+material = ExtResource("1_al0d2")
+
+[node name="PrimPicker" type="Node3D"]
+script = ExtResource("1_huef6")
+
+[node name="SphereBody" type="StaticBody3D" parent="."]
+visible = false
+
+[node name="SphereCollider" type="CollisionShape3D" parent="SphereBody"]
+shape = SubResource("SphereShape3D_rkdup")
+
+[node name="BoxBody" type="StaticBody3D" parent="."]
+visible = false
+
+[node name="BoxCollider" type="CollisionShape3D" parent="BoxBody"]
+shape = SubResource("BoxShape3D_5el4r")
+
+[node name="SphereMesh" type="MeshInstance3D" parent="."]
+visible = false
+mesh = SubResource("SphereMesh_nqmhk")
+
+[node name="BoxMesh" type="MeshInstance3D" parent="."]
+visible = false
+mesh = SubResource("BoxMesh_3u8lg")
+
+[connection signal="mouse_entered" from="SphereBody" to="." method="_shape_entered" binds= ["sphere"]]
+[connection signal="mouse_exited" from="SphereBody" to="." method="_shape_exited"]
+[connection signal="mouse_entered" from="BoxBody" to="." method="_shape_entered" binds= ["box"]]
+[connection signal="mouse_exited" from="BoxBody" to="." method="_shape_exited"]

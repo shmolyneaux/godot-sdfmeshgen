@@ -1,9 +1,14 @@
-[gd_scene load_steps=10 format=3 uid="uid://bj6xbavllu22s"]
+[gd_scene load_steps=14 format=3 uid="uid://bj6xbavllu22s"]
 
 [ext_resource type="Script" path="res://Editor.gd" id="1_2bhxo"]
 [ext_resource type="PackedScene" uid="uid://1ok8h0bhmx3c" path="res://SdfViewer.tscn" id="1_s5p87"]
 [ext_resource type="Script" path="res://CameraController.gd" id="2_g7nfg"]
 [ext_resource type="PackedScene" uid="uid://ciqhfcwpqp360" path="res://Cursor3D.tscn" id="4_asfei"]
+[ext_resource type="PackedScene" uid="uid://ch7wfct32xk6o" path="res://PrimPicker.tscn" id="5_n4umt"]
+
+[sub_resource type="SphereMesh" id="SphereMesh_8uxku"]
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_at1u5"]
 
 [sub_resource type="World3D" id="World3D_12law"]
 
@@ -18,8 +23,24 @@ viewport_path = NodePath("WidgetViewport")
 
 [sub_resource type="World3D" id="World3D_hap5c"]
 
+[sub_resource type="Curve3D" id="Curve3D_8qvd0"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0.679, 0.759, 0, -1.87541, -0.0285663, 1.35886, -1.758, 1.346, 0.019, -0.679919, -3.57189, -0.0187169, 1.24917, 0.293101, 1.35855),
+"tilts": PackedFloat32Array(0, 0)
+}
+point_count = 2
+
 [node name="Editor" type="Node3D"]
 script = ExtResource("1_2bhxo")
+
+[node name="MeshInstance3D2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.53061, 0, 1.39943)
+mesh = SubResource("SphereMesh_8uxku")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="MeshInstance3D2"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="MeshInstance3D2/StaticBody3D"]
+shape = SubResource("SphereShape3D_at1u5")
 
 [node name="WidgetViewport" type="SubViewport" parent="."]
 world_3d = SubResource("World3D_12law")
@@ -28,12 +49,12 @@ msaa_3d = 3
 screen_space_aa = 1
 size = Vector2i(2048, 1024)
 
+[node name="WidgetCamera" type="Camera3D" parent="WidgetViewport"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 5)
+fov = 67.5
+
 [node name="Node3D" type="Node3D" parent="WidgetViewport"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2.5)
-
-[node name="Camera3D" type="Camera3D" parent="WidgetViewport/Node3D"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 2.5)
-fov = 67.5
 
 [node name="3D Cursor" parent="WidgetViewport" instance=ExtResource("4_asfei")]
 unique_name_in_owner = true
@@ -49,7 +70,7 @@ script = ExtResource("2_g7nfg")
 remote_path = NodePath("../../SdfViewport/SdfViewer")
 
 [node name="ApplyWidgetCamera" type="RemoteTransform3D" parent="Camera3D"]
-remote_path = NodePath("../../WidgetViewport/Node3D/Camera3D")
+remote_path = NodePath("../../WidgetViewport/WidgetCamera")
 
 [node name="OmniLight3D" type="OmniLight3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 2, 2)
@@ -71,31 +92,6 @@ offset_right = 2048.0
 offset_bottom = 1024.0
 texture = SubResource("ViewportTexture_isaaf")
 
-[node name="Control" type="Control" parent="."]
-layout_mode = 3
-anchors_preset = 9
-anchor_bottom = 1.0
-offset_right = 476.0
-grow_vertical = 2
-
-[node name="VBoxContainer" type="VBoxContainer" parent="Control"]
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 40.0
-
-[node name="Label" type="Label" parent="Control/VBoxContainer"]
-layout_mode = 2
-text = "Hold RMB for FPS mode (WASD, Shift, Ctrl, Space)
-
-Press \"C\" to create a sphere
-Use scroll where to adjust size"
-
-[node name="ColorPickerButton" type="ColorPickerButton" parent="Control/VBoxContainer"]
-layout_mode = 2
-text = "test
-"
-color = Color(1, 1, 1, 1)
-
 [node name="SdfViewport" type="SubViewport" parent="."]
 world_3d = SubResource("World3D_hap5c")
 transparent_bg = true
@@ -106,5 +102,101 @@ size = Vector2i(2048, 1024)
 unique_name_in_owner = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 5)
 
-[connection signal="color_changed" from="Control/VBoxContainer/ColorPickerButton" to="." method="update_shape_color"]
+[node name="Control2" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+
+[node name="Control" type="Control" parent="Control2"]
+layout_mode = 1
+anchors_preset = 9
+anchor_bottom = 1.0
+offset_right = 476.0
+grow_vertical = 2
+mouse_filter = 1
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Control2/Control"]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="Label" type="Label" parent="Control2/Control/VBoxContainer"]
+layout_mode = 2
+text = "Hold RMB for FPS mode (WASD, Shift, Ctrl, Space)
+
+Press \"C\" to create a sphere
+Use scroll wheel to adjust size"
+
+[node name="ColorPicker" type="ColorPicker" parent="Control2/Control/VBoxContainer"]
+layout_mode = 2
+edit_alpha = false
+picker_shape = 4
+
+[node name="HBoxContainer" type="HBoxContainer" parent="Control2/Control/VBoxContainer"]
+layout_mode = 2
+
+[node name="Blending Label" type="Label" parent="Control2/Control/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "Blending
+"
+
+[node name="Blending Slider" type="HSlider" parent="Control2/Control/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+max_value = 1.0
+step = 0.05
+
+[node name="Blending Input" type="SpinBox" parent="Control2/Control/VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(50, 0)
+layout_mode = 2
+max_value = 1.0
+step = 0.05
+alignment = 1
+
+[node name="VBoxContainer2" type="VBoxContainer" parent="Control2"]
+layout_mode = 1
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -317.0
+grow_horizontal = 0
+grow_vertical = 2
+
+[node name="Button" type="Button" parent="Control2/VBoxContainer2"]
+layout_mode = 2
+text = "Select"
+
+[node name="ColorRect" type="ColorRect" parent="Control2/VBoxContainer2"]
+custom_minimum_size = Vector2(0, 1)
+layout_mode = 2
+color = Color(0.239216, 0.239216, 0.239216, 1)
+
+[node name="SphereButton" type="Button" parent="Control2/VBoxContainer2"]
+layout_mode = 2
+text = "Sphere"
+
+[node name="CubeButton" type="Button" parent="Control2/VBoxContainer2"]
+layout_mode = 2
+text = "Cube"
+
+[node name="PrimPicker" parent="." instance=ExtResource("5_n4umt")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.59707, 0, -1.24458)
+shape = "sphere"
+
+[node name="Path3D" type="Path3D" parent="."]
+curve = SubResource("Curve3D_8qvd0")
+
+[connection signal="mouse_entered" from="MeshInstance3D2/StaticBody3D" to="." method="_on_static_body_3d_mouse_entered"]
 [connection signal="full_res_update" from="SdfViewport/SdfViewer" to="." method="_update_cursor"]
+[connection signal="color_changed" from="Control2/Control/VBoxContainer/ColorPicker" to="." method="update_shape_color"]
+[connection signal="value_changed" from="Control2/Control/VBoxContainer/HBoxContainer/Blending Slider" to="." method="set_blending"]
+[connection signal="value_changed" from="Control2/Control/VBoxContainer/HBoxContainer/Blending Input" to="." method="set_blending"]
+[connection signal="pressed" from="Control2/VBoxContainer2/Button" to="." method="set_shape" binds= [""]]
+[connection signal="pressed" from="Control2/VBoxContainer2/SphereButton" to="." method="set_shape" binds= ["sphere"]]
+[connection signal="pressed" from="Control2/VBoxContainer2/CubeButton" to="." method="set_shape" binds= ["cube"]]

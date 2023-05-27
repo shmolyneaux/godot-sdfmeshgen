@@ -66,6 +66,8 @@ Program is a mix of instructions and data (all 32-bit):
 #define SPHERE         200
 #define BOX            201
 #define ELLIPSOID      202
+#define ROUND_CONE     203
+#define QUAD_BEZIER    204
 
 #define ROUND          300
 
@@ -79,6 +81,11 @@ program;
 
 layout(r32f, binding = 3) restrict uniform image2D depthOutput;
 layout(rgba32f, binding = 4) restrict uniform image2D normalOutput;
+
+float cro( in vec2 a, in vec2 b ) { return a.x*b.y - a.y*b.x; }
+float dot2( in vec2 v ) { return dot(v,v); }
+float dot2( in vec3 v ) { return dot(v,v); }
+float ndot( in vec2 a, in vec2 b ) { return a.x*b.x - a.y*b.y; }
 
 float smoothUnion( float a, float b, float k ) {
     float h = max( k-abs(a-b), 0.0 )/k;
@@ -124,9 +131,100 @@ float sdEllipsoid( in vec3 p, in vec3 r )
     return k1*(k1-1.0)/k2;
 }
 
+float sdRoundCone( vec3 p, vec3 a, vec3 b, float r1, float r2 )
+{
+  // sampling independent computations (only depend on shape)
+  vec3  ba = b - a;
+  float l2 = dot(ba,ba);
+  float rr = r1 - r2;
+  float a2 = l2 - rr*rr;
+  float il2 = 1.0/l2;
+    
+  // sampling dependant computations
+  vec3 pa = p - a;
+  float y = dot(pa,ba);
+  float z = y - l2;
+  float x2 = dot2( pa*l2 - ba*y );
+  float y2 = y*y*l2;
+  float z2 = z*z*l2;
+
+  // single square root!
+  float k = sign(rr)*rr*rr*x2;
+  if( sign(z)*a2*z2>k ) return  sqrt(x2 + z2)        *il2 - r2;
+  if( sign(y)*a2*y2<k ) return  sqrt(x2 + y2)        *il2 - r1;
+                        return (sqrt(x2*a2*il2)+y*rr)*il2 - r1;
+
+}
+
+// Modified from https://www.shadertoy.com/view/ldj3Wh
+vec2 sdBezier(vec3 pos, vec3 A, vec3 B, vec3 C)
+{    
+    vec3 a = B - A;
+    vec3 b = A - 2.0*B + C;
+    vec3 c = a * 2.0;
+    vec3 d = A - pos;
+
+    float kk = 1.0 / dot(b,b);
+    float kx = kk * dot(a,b);
+    float ky = kk * (2.0*dot(a,a)+dot(d,b)) / 3.0;
+    float kz = kk * dot(d,a);      
+
+    vec2 res;
+
+    float p = ky - kx*kx;
+    float p3 = p*p*p;
+    float q = kx*(2.0*kx*kx - 3.0*ky) + kz;
+    float q2 = q*q;
+    float h = q2 + 4.0*p3;
+
+    if(h >= 0.0) 
+    { 
+        h = sqrt(h);
+        vec2 x = (vec2(h, -h) - q) / 2.0;
+        
+		// See screeb's (NOT iq's) description of this fix from:
+		// https://www.shadertoy.com/view/MlKcDD
+		if(abs(abs(h/q) - 1.0) < 0.0001)
+        {
+            x = vec2(p3/q, -q - p3/q);
+
+            if(q < 0.0)
+                x = x.yx;
+        }
+        
+        vec2 uv = sign(x)*pow(abs(x), vec2(1.0/3.0));
+		float unclamped_t = uv.x+uv.y-kx;
+        float t = clamp(unclamped_t, 0.0, 1.0);
+
+        res = vec2(dot2(d+(c+b*t)*t), unclamped_t);
+    }
+    else
+    {
+        float z = sqrt(-p);
+        float v = acos( q/(p*z*2.0) ) / 3.0;
+        float m = cos(v);
+        float n = sin(v)*1.732050808;
+		
+		vec3 unclamped_t = vec3(m+m,-n-m,n-m)*z-kx;
+        vec3 t = clamp( unclamped_t, 0.0, 1.0);
+        
+        // 3 roots, but only need two
+        float dis = dot2(d+(c+b*t.x)*t.x);
+        res = vec2(dis,unclamped_t.x);
+
+        dis = dot2(d+(c+b*t.y)*t.y);
+        if( dis<res.x ) res = vec2(dis, unclamped_t.y );
+    }
+    
+    res.x = sqrt(res.x);
+    return res;
+}
+
 vec4 map( in vec3 pos ) {
 	int sp = -1;
+	int pos_sp = -1;
 	vec4 stack[20];
+	vec3 pos_stack[20];
 	
 	vec3 color = vec3(0.5, 0.5, 0.5);
 	
@@ -134,6 +232,15 @@ vec4 map( in vec3 pos ) {
 		if (program.data[i] == SPHERE) {
 			stack[++sp] = vec4(color, sdSphere(pos, intBitsToFloat(program.data[i+1])));
 			i++;
+		} else if (program.data[i] == ROUND_CONE) {
+			vec3 a = vec3(intBitsToFloat(program.data[i+1]), intBitsToFloat(program.data[i+2]), intBitsToFloat(program.data[i+3]));
+			vec3 b = vec3(intBitsToFloat(program.data[i+4]), intBitsToFloat(program.data[i+5]), intBitsToFloat(program.data[i+6]));
+
+			float r1 = intBitsToFloat(program.data[i+7]);
+			float r2 = intBitsToFloat(program.data[i+8]);
+
+			stack[++sp] = vec4(color, sdRoundCone(pos, a, b, r1, r2));
+			i += 8;
 		} else if (program.data[i] == BOX) {
 			vec3 b = vec3(
 				intBitsToFloat(program.data[i+1]),
@@ -141,7 +248,49 @@ vec4 map( in vec3 pos ) {
 				intBitsToFloat(program.data[i+3])
 			);
 			stack[sp+1] = vec4(color, sdBox(pos, b));
+			
 			i += 3;
+			sp++;
+		} else if (program.data[i] == QUAD_BEZIER) {
+			vec3 a = vec3(
+				intBitsToFloat(program.data[i+1]),
+				intBitsToFloat(program.data[i+2]),
+				intBitsToFloat(program.data[i+3])
+			);
+			vec3 b = vec3(
+				intBitsToFloat(program.data[i+4]),
+				intBitsToFloat(program.data[i+5]),
+				intBitsToFloat(program.data[i+6])
+			);
+			vec3 c = vec3(
+				intBitsToFloat(program.data[i+7]),
+				intBitsToFloat(program.data[i+8]),
+				intBitsToFloat(program.data[i+9])
+			);
+			
+			stack[sp+1] = vec4(color, sdBox(pos, b));
+
+			vec2 dt = sdBezier(pos, a, b, c);
+			
+			// TODO: we want to look at the t value slightly beyond 0 and 1 so that the bezier
+			// doesn't stop with a weird spherical nub
+			float t = clamp(dt.y, -0.05, 1.05);
+			
+			//float ra = (dt.y-1)*dt.y*(-0.5)*(dt.y-1)*dt.y*(-0.5)*10.0;
+			
+			float ra = -t*(t-1.0);
+			
+			ra *= 1.2;
+			ra += 0.2;
+			
+			//float ra = 0.1;
+			stack[sp+1] = vec4(color, dt.x-ra);
+
+
+			
+			
+			
+			i += 9;
 			sp++;
 		} else if (program.data[i] == ELLIPSOID) {
 			vec3 r = vec3(
@@ -210,7 +359,7 @@ vec4 map( in vec3 pos ) {
 			stack[sp] = vec4(color, stack[sp].w - intBitsToFloat(program.data[i+1]));
 			i++;
 		} else if (program.data[i] == POP_POS) {
-			pos = stack[sp--].xyz;
+			pos = pos_stack[pos_sp--];
 		} else if (program.data[i] == MOV) {
 			//stack[++sp] = pos.xxyz;
 			pos -= vec3(
@@ -219,6 +368,20 @@ vec4 map( in vec3 pos ) {
 				intBitsToFloat(program.data[i+3])
 			);
 			i += 3;
+		} else if (program.data[i] == MOV_ROT) {
+			pos_stack[++pos_sp] = pos;
+
+			mat4 transform;	
+
+			transform[0] = vec4(intBitsToFloat(program.data[i+1]), intBitsToFloat(program.data[i+2]), intBitsToFloat(program.data[i+3]), 0);
+			transform[1] = vec4(intBitsToFloat(program.data[i+4]), intBitsToFloat(program.data[i+5]), intBitsToFloat(program.data[i+6]), 0);
+			transform[2] = vec4(intBitsToFloat(program.data[i+7]), intBitsToFloat(program.data[i+8]), intBitsToFloat(program.data[i+9]), 0);
+			transform[3] = vec4(0, 0, 0, 1);
+
+			
+			pos = (vec4(pos, 1)*transform).xyz;
+			
+			i += 9;
 		} else if (program.data[i] == COLOR) {
 			color = vec3(
 				intBitsToFloat(program.data[i+1]),
@@ -283,7 +446,7 @@ void main() {
 		vec3 pos = ro + t*rd;
 		nor = calcNormal(pos);
 		
-		float dif = clamp( dot(nor, vec3(0.57703)), 0.05, 1.0 );
+		float dif = clamp( dot(nor, vec3(0.575766, 0.628109, 0.523424)), 0.05, 1.0 );
 		vec3 diffuseColor = map(pos).xyz;
 		
 		col = diffuseColor*dif;
