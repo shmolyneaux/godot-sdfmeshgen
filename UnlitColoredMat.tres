@@ -1,0 +1,17 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3 uid="uid://cr5cjf6pdlqmo"]
+
+[sub_resource type="Shader" id="Shader_ui0up"]
+code = "shader_type spatial;
+render_mode unshaded;
+instance uniform vec4 color : source_color;
+
+void vertex() {}
+
+void fragment() {
+	ALBEDO = color.xyz;
+}
+"
+
+[resource]
+render_priority = 0
+shader = SubResource("Shader_ui0up")

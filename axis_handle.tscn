@@ -1,0 +1,47 @@
+[gd_scene load_steps=6 format=3 uid="uid://bb442uawktlgi"]
+
+[ext_resource type="Script" path="res://axis_handle.gd" id="1_wy6v8"]
+[ext_resource type="Material" uid="uid://cr5cjf6pdlqmo" path="res://UnlitColoredMat.tres" id="2_m3cuy"]
+
+[sub_resource type="SphereMesh" id="SphereMesh_odie3"]
+material = ExtResource("2_m3cuy")
+radius = 0.05
+height = 0.1
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_6mtob"]
+radius = 0.05
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_e7gaa"]
+material = ExtResource("2_m3cuy")
+top_radius = 0.01
+bottom_radius = 0.01
+height = 100.0
+
+[node name="AxisHandle" type="Node3D"]
+script = ExtResource("1_wy6v8")
+
+[node name="HandleBody" type="StaticBody3D" parent="."]
+
+[node name="Mesh" type="MeshInstance3D" parent="HandleBody"]
+unique_name_in_owner = true
+instance_shader_parameters/color = Color(1, 1, 1, 1)
+mesh = SubResource("SphereMesh_odie3")
+skeleton = NodePath("../..")
+
+[node name="Collision" type="CollisionShape3D" parent="HandleBody"]
+shape = SubResource("SphereShape3D_6mtob")
+
+[node name="AxisGuide" type="Node3D" parent="HandleBody"]
+unique_name_in_owner = true
+visible = false
+
+[node name="AxisMesh" type="MeshInstance3D" parent="HandleBody/AxisGuide"]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0)
+instance_shader_parameters/color = Color(1, 0, 0, 1)
+mesh = SubResource("CylinderMesh_e7gaa")
+skeleton = NodePath("../..")
+
+[connection signal="input_event" from="HandleBody" to="." method="_on_handle_body_input_event"]
+[connection signal="mouse_entered" from="HandleBody" to="." method="_on_handle_body_mouse_entered"]
+[connection signal="mouse_exited" from="HandleBody" to="." method="_on_handle_body_mouse_exited"]

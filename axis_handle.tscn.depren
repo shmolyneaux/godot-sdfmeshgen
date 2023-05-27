@@ -1,0 +1,40 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://axis_handle.gd" id="1_wy6v8"]
+[ext_resource type="Material" uid="uid://bkktcke0u2iwv" path="res://WidgetHandleUnselectedMat.tres" id="2_46gxr"]
+[ext_resource type="Material" uid="uid://iafycvhqdomt" path="res://WidgetHandleGuideMat.tres" id="3_ra0vh"]
+
+[sub_resource type="SphereMesh" id="SphereMesh_lg07i"]
+material = ExtResource("2_46gxr")
+radius = 0.05
+height = 0.1
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_6mtob"]
+radius = 0.05
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_e7gaa"]
+material = ExtResource("3_ra0vh")
+top_radius = 0.01
+bottom_radius = 0.01
+height = 100.0
+
+[node name="AxisHandle" type="Node3D"]
+script = ExtResource("1_wy6v8")
+
+[node name="HandleBody" type="StaticBody3D" parent="."]
+
+[node name="Mesh" type="MeshInstance3D" parent="HandleBody"]
+unique_name_in_owner = true
+mesh = SubResource("SphereMesh_lg07i")
+skeleton = NodePath("../..")
+
+[node name="Collision" type="CollisionShape3D" parent="HandleBody"]
+shape = SubResource("SphereShape3D_6mtob")
+
+[node name="AxisMesh" type="MeshInstance3D" parent="HandleBody"]
+unique_name_in_owner = true
+visible = false
+mesh = SubResource("CylinderMesh_e7gaa")
+
+[connection signal="mouse_entered" from="HandleBody" to="." method="_on_handle_body_mouse_entered"]
+[connection signal="mouse_exited" from="HandleBody" to="." method="_on_handle_body_mouse_exited"]

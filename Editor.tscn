@@ -1,14 +1,11 @@
-[gd_scene load_steps=14 format=3 uid="uid://bj6xbavllu22s"]
+[gd_scene load_steps=15 format=3 uid="uid://bj6xbavllu22s"]
 
 [ext_resource type="Script" path="res://Editor.gd" id="1_2bhxo"]
 [ext_resource type="PackedScene" uid="uid://1ok8h0bhmx3c" path="res://SdfViewer.tscn" id="1_s5p87"]
-[ext_resource type="Script" path="res://CameraController.gd" id="2_g7nfg"]
+[ext_resource type="PackedScene" uid="uid://b3uaa3fmhewco" path="res://camera_controller.tscn" id="3_swnvf"]
 [ext_resource type="PackedScene" uid="uid://ciqhfcwpqp360" path="res://Cursor3D.tscn" id="4_asfei"]
+[ext_resource type="Script" path="res://SceneOutline.gd" id="5_kg06b"]
 [ext_resource type="PackedScene" uid="uid://ch7wfct32xk6o" path="res://PrimPicker.tscn" id="5_n4umt"]
-
-[sub_resource type="SphereMesh" id="SphereMesh_8uxku"]
-
-[sub_resource type="SphereShape3D" id="SphereShape3D_at1u5"]
 
 [sub_resource type="World3D" id="World3D_12law"]
 
@@ -23,6 +20,12 @@ viewport_path = NodePath("WidgetViewport")
 
 [sub_resource type="World3D" id="World3D_hap5c"]
 
+[sub_resource type="SystemFont" id="SystemFont_f0nlj"]
+font_names = PackedStringArray("Monospace")
+
+[sub_resource type="LabelSettings" id="LabelSettings_sle62"]
+font = SubResource("SystemFont_f0nlj")
+
 [sub_resource type="Curve3D" id="Curve3D_8qvd0"]
 _data = {
 "points": PackedVector3Array(0, 0, 0, 0.679, 0.759, 0, -1.87541, -0.0285663, 1.35886, -1.758, 1.346, 0.019, -0.679919, -3.57189, -0.0187169, 1.24917, 0.293101, 1.35855),
@@ -32,15 +35,6 @@ point_count = 2
 
 [node name="Editor" type="Node3D"]
 script = ExtResource("1_2bhxo")
-
-[node name="MeshInstance3D2" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.53061, 0, 1.39943)
-mesh = SubResource("SphereMesh_8uxku")
-
-[node name="StaticBody3D" type="StaticBody3D" parent="MeshInstance3D2"]
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="MeshInstance3D2/StaticBody3D"]
-shape = SubResource("SphereShape3D_at1u5")
 
 [node name="WidgetViewport" type="SubViewport" parent="."]
 world_3d = SubResource("World3D_12law")
@@ -63,8 +57,7 @@ unique_name_in_owner = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 5)
 fov = 67.5
 
-[node name="CameraController" type="Node" parent="Camera3D"]
-script = ExtResource("2_g7nfg")
+[node name="CameraController" parent="Camera3D" instance=ExtResource("3_swnvf")]
 
 [node name="ApplySdfCamera" type="RemoteTransform3D" parent="Camera3D"]
 remote_path = NodePath("../../SdfViewport/SdfViewer")
@@ -158,6 +151,23 @@ max_value = 1.0
 step = 0.05
 alignment = 1
 
+[node name="SceneOutline" type="VBoxContainer" parent="Control2/Control/VBoxContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 250)
+layout_mode = 2
+size_flags_vertical = 3
+script = ExtResource("5_kg06b")
+
+[node name="Tree" type="Tree" parent="Control2/Control/VBoxContainer/SceneOutline"]
+custom_minimum_size = Vector2(0, 200)
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Control2/Control/VBoxContainer/SceneOutline"]
+layout_mode = 2
+text = "text"
+label_settings = SubResource("LabelSettings_sle62")
+autowrap_mode = 1
+
 [node name="VBoxContainer2" type="VBoxContainer" parent="Control2"]
 layout_mode = 1
 anchors_preset = 11
@@ -192,11 +202,11 @@ shape = "sphere"
 [node name="Path3D" type="Path3D" parent="."]
 curve = SubResource("Curve3D_8qvd0")
 
-[connection signal="mouse_entered" from="MeshInstance3D2/StaticBody3D" to="." method="_on_static_body_3d_mouse_entered"]
 [connection signal="full_res_update" from="SdfViewport/SdfViewer" to="." method="_update_cursor"]
 [connection signal="color_changed" from="Control2/Control/VBoxContainer/ColorPicker" to="." method="update_shape_color"]
 [connection signal="value_changed" from="Control2/Control/VBoxContainer/HBoxContainer/Blending Slider" to="." method="set_blending"]
 [connection signal="value_changed" from="Control2/Control/VBoxContainer/HBoxContainer/Blending Input" to="." method="set_blending"]
+[connection signal="item_selected" from="Control2/Control/VBoxContainer/SceneOutline/Tree" to="Control2/Control/VBoxContainer/SceneOutline" method="_on_tree_item_selected"]
 [connection signal="pressed" from="Control2/VBoxContainer2/Button" to="." method="set_shape" binds= [""]]
 [connection signal="pressed" from="Control2/VBoxContainer2/SphereButton" to="." method="set_shape" binds= ["sphere"]]
 [connection signal="pressed" from="Control2/VBoxContainer2/CubeButton" to="." method="set_shape" binds= ["cube"]]

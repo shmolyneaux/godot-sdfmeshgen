@@ -283,7 +283,7 @@ vec4 map( in vec3 pos ) {
 			ra *= 1.2;
 			ra += 0.2;
 			
-			//float ra = 0.1;
+			ra = 0.1;
 			stack[sp+1] = vec4(color, dt.x-ra);
 
 

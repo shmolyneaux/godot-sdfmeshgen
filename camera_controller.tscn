@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://b3uaa3fmhewco"]
+
+[ext_resource type="Script" path="res://CameraController.gd" id="1_q5mri"]
+
+[node name="CameraController" type="Node"]
+script = ExtResource("1_q5mri")

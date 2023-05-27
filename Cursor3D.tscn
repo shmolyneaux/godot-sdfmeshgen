@@ -1,39 +1,28 @@
-[gd_scene load_steps=17 format=3 uid="uid://ciqhfcwpqp360"]
+[gd_scene load_steps=15 format=3 uid="uid://ciqhfcwpqp360"]
 
 [ext_resource type="Material" uid="uid://tok8rl1rnxqp" path="res://ShapeGhostMat.tres" id="1_ey0pa"]
 [ext_resource type="Script" path="res://Cursor3D.gd" id="1_limvj"]
+[ext_resource type="Material" uid="uid://cr5cjf6pdlqmo" path="res://UnlitColoredMat.tres" id="2_hbhtk"]
 [ext_resource type="PackedScene" uid="uid://e6ppvu3y17rp" path="res://rounded_cone.glb" id="3_da1qa"]
 [ext_resource type="PackedScene" uid="uid://cmtfn4cwq4r44" path="res://rounded_cube.glb" id="3_regxl"]
 [ext_resource type="Shader" path="res://ShapeGhostMat.gdshader" id="4_o5yag"]
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_abols"]
-shading_mode = 0
-albedo_color = Color(0.451064, 0.776981, 1, 1)
-
 [sub_resource type="CylinderMesh" id="CylinderMesh_hq8ea"]
-material = SubResource("StandardMaterial3D_abols")
+material = ExtResource("2_hbhtk")
 top_radius = 0.0
 bottom_radius = 0.02
 height = 0.04
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_q63wl"]
-shading_mode = 0
-albedo_color = Color(0.45098, 0.776471, 1, 1)
-
 [sub_resource type="CylinderMesh" id="CylinderMesh_8ow31"]
-material = SubResource("StandardMaterial3D_q63wl")
+material = ExtResource("2_hbhtk")
 top_radius = 0.003
 bottom_radius = 0.01
 height = 0.25
 radial_segments = 16
 rings = 2
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_8dho2"]
-shading_mode = 0
-albedo_color = Color(1, 0, 0, 1)
-
 [sub_resource type="CylinderMesh" id="CylinderMesh_cres7"]
-material = SubResource("StandardMaterial3D_8dho2")
+material = ExtResource("2_hbhtk")
 top_radius = 0.02
 bottom_radius = 0.02
 height = 0.005
@@ -69,16 +58,19 @@ script = ExtResource("1_limvj")
 
 [node name="Head" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, -0.262)
+instance_shader_parameters/color = Color(0.45098, 0.776471, 1, 1)
 mesh = SubResource("CylinderMesh_hq8ea")
 skeleton = NodePath("../Line")
 
 [node name="Line" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, -0.125)
+instance_shader_parameters/color = Color(0.45098, 0.776471, 1, 1)
 mesh = SubResource("CylinderMesh_8ow31")
 skeleton = NodePath("../..")
 
 [node name="Base" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0)
+instance_shader_parameters/color = Color(1, 0, 0, 1)
 mesh = SubResource("CylinderMesh_cres7")
 skeleton = NodePath("../..")
 

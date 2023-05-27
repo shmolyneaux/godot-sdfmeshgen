@@ -48,6 +48,7 @@ func _ready():
 		}
 	)
 	%SdfViewer.sdf_objects = objs
+	%SceneOutline.scene = objs
 
 func update_shape_color(color: Color):
 	shape_color = color
@@ -160,6 +161,7 @@ func _process(delta):
 			}
 			
 		%SdfViewer.sdf_objects = %SdfViewer.sdf_objects + [new_obj]
+		%SceneOutline.scene = %SdfViewer.sdf_objects
 
 
 func _on_static_body_3d_mouse_entered():

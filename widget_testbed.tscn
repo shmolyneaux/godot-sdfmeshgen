@@ -1,0 +1,54 @@
+[gd_scene load_steps=6 format=3 uid="uid://dp5fj2x2i3jc3"]
+
+[ext_resource type="Script" path="res://widget_testbed.gd" id="1_2w10e"]
+[ext_resource type="PackedScene" uid="uid://b3uaa3fmhewco" path="res://camera_controller.tscn" id="1_5oil4"]
+[ext_resource type="PackedScene" uid="uid://bb442uawktlgi" path="res://axis_handle.tscn" id="2_oyvn6"]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_cidx6"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_vjpoo"]
+size = Vector3(2, 2, 2)
+
+[node name="WidgetTestbed" type="Node3D"]
+script = ExtResource("1_2w10e")
+
+[node name="Bottom" parent="." instance=ExtResource("2_oyvn6")]
+axis = Vector3(0, -1, 0)
+
+[node name="Right" parent="." instance=ExtResource("2_oyvn6")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0)
+axis = Vector3(1, 0, 0)
+
+[node name="Left" parent="." instance=ExtResource("2_oyvn6")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 1, 0)
+axis = Vector3(-1, 0, 0)
+
+[node name="Top" parent="." instance=ExtResource("2_oyvn6")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+
+[node name="Front" parent="." instance=ExtResource("2_oyvn6")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1)
+axis = Vector3(0, 0, 1)
+
+[node name="Back" parent="." instance=ExtResource("2_oyvn6")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -1)
+axis = Vector3(0, 0, -1)
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.977977, 0.208714, 0, -0.208714, 0.977977, 0, 1.46286, 2.50993)
+
+[node name="CameraController" parent="Camera3D" instance=ExtResource("1_5oil4")]
+
+[node name="Floor" type="MeshInstance3D" parent="."]
+mesh = SubResource("PlaneMesh_cidx6")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+mesh = SubResource("BoxMesh_vjpoo")
+
+[connection signal="position_changed" from="Bottom" to="." method="_on_bottom_position_changed"]
+[connection signal="position_changed" from="Right" to="." method="_on_right_position_changed"]
+[connection signal="position_changed" from="Left" to="." method="_on_left_position_changed"]
+[connection signal="position_changed" from="Top" to="." method="_on_top_position_changed"]
+[connection signal="position_changed" from="Front" to="." method="_on_front_position_changed"]
+[connection signal="position_changed" from="Back" to="." method="_on_back_position_changed"]
