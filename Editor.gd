@@ -166,3 +166,17 @@ func _process(delta):
 
 func _on_static_body_3d_mouse_entered():
 	print("mouse entered")
+
+
+func _on_box_widget_box_changed(position, size):
+	%SdfViewer.sdf_objects = [
+		{
+			"shape": "box",
+			"size": size*0.5,
+			"position": position + Vector3(3, 0, 0),
+			"rotation": Transform3D(),
+			"blending": 0.0,
+			"color": Color.RED,
+		}
+	]
+	%SceneOutline.scene = %SdfViewer.sdf_objects

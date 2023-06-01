@@ -1,79 +1,51 @@
 [gd_scene load_steps=5 format=3 uid="uid://dacwq50n83ihk"]
 
 [ext_resource type="Script" path="res://box_widget.gd" id="1_4qj4m"]
+[ext_resource type="PackedScene" uid="uid://bb442uawktlgi" path="res://axis_handle.tscn" id="2_q6q85"]
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_v7y8v"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ppxqw"]
+transparency = 1
 shading_mode = 0
+albedo_color = Color(1, 1, 1, 0.921569)
 
-[sub_resource type="SphereMesh" id="SphereMesh_35i31"]
-material = SubResource("StandardMaterial3D_v7y8v")
-radius = 0.05
-height = 0.1
-
-[sub_resource type="SphereShape3D" id="SphereShape3D_4eex8"]
-radius = 0.05
+[sub_resource type="BoxMesh" id="BoxMesh_q5eu5"]
+material = SubResource("StandardMaterial3D_ppxqw")
+size = Vector3(2, 2, 2)
 
 [node name="BoxWidget" type="Node3D"]
 script = ExtResource("1_4qj4m")
 
-[node name="Top" type="StaticBody3D" parent="."]
+[node name="Box" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+mesh = SubResource("BoxMesh_q5eu5")
 
-[node name="Mesh" type="MeshInstance3D" parent="Top"]
-mesh = SubResource("SphereMesh_35i31")
-skeleton = NodePath("../..")
+[node name="Bottom" parent="Box" instance=ExtResource("2_q6q85")]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 0, -1, 0)
 
-[node name="Collision" type="CollisionShape3D" parent="Top"]
-shape = SubResource("SphereShape3D_4eex8")
+[node name="Right" parent="Box" instance=ExtResource("2_q6q85")]
+unique_name_in_owner = true
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 1, 0, 0)
 
-[node name="Bottom" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1, 0)
+[node name="Left" parent="Box" instance=ExtResource("2_q6q85")]
+unique_name_in_owner = true
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -1, 0, 0)
 
-[node name="Mesh" type="MeshInstance3D" parent="Bottom"]
-mesh = SubResource("SphereMesh_35i31")
-skeleton = NodePath("../..")
+[node name="Top" parent="Box" instance=ExtResource("2_q6q85")]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 1, 0)
 
-[node name="Collision" type="CollisionShape3D" parent="Bottom"]
-shape = SubResource("SphereShape3D_4eex8")
+[node name="Front" parent="Box" instance=ExtResource("2_q6q85")]
+unique_name_in_owner = true
+transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 0, 0, 1)
 
-[node name="Right" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0)
-
-[node name="Mesh" type="MeshInstance3D" parent="Right"]
-mesh = SubResource("SphereMesh_35i31")
-skeleton = NodePath("../..")
-
-[node name="Collision" type="CollisionShape3D" parent="Right"]
-shape = SubResource("SphereShape3D_4eex8")
-
-[node name="Front" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1)
-
-[node name="Mesh" type="MeshInstance3D" parent="Front"]
-mesh = SubResource("SphereMesh_35i31")
-skeleton = NodePath("../..")
-
-[node name="Collision" type="CollisionShape3D" parent="Front"]
-shape = SubResource("SphereShape3D_4eex8")
-
-[node name="Left" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 0, 0)
-
-[node name="Mesh" type="MeshInstance3D" parent="Left"]
-mesh = SubResource("SphereMesh_35i31")
-skeleton = NodePath("../..")
-
-[node name="Collision" type="CollisionShape3D" parent="Left"]
-shape = SubResource("SphereShape3D_4eex8")
-
-[node name="Back" type="StaticBody3D" parent="."]
+[node name="Back" parent="Box" instance=ExtResource("2_q6q85")]
+unique_name_in_owner = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -1)
 
-[node name="Mesh" type="MeshInstance3D" parent="Back"]
-mesh = SubResource("SphereMesh_35i31")
-skeleton = NodePath("../..")
-
-[node name="Collision" type="CollisionShape3D" parent="Back"]
-shape = SubResource("SphereShape3D_4eex8")
-
-[connection signal="input_event" from="Right" to="." method="_on_right_input_event"]
+[connection signal="position_changed" from="Box/Bottom" to="." method="_on_bottom_position_changed"]
+[connection signal="position_changed" from="Box/Right" to="." method="_on_right_position_changed"]
+[connection signal="position_changed" from="Box/Left" to="." method="_on_left_position_changed"]
+[connection signal="position_changed" from="Box/Top" to="." method="_on_top_position_changed"]
+[connection signal="position_changed" from="Box/Front" to="." method="_on_front_position_changed"]
+[connection signal="position_changed" from="Box/Back" to="." method="_on_back_position_changed"]

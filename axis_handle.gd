@@ -2,21 +2,13 @@ extends Node3D
 
 signal position_changed(movement_along_axis, new_position)
 
-# Normalized axis
-@export var axis = Vector3.UP:
-	get:
-		return axis
-	set(value):
-		assert(value.x or value.y or value.z)
-		axis = value.normalized()
-		_update_axis_guide()
-
 
 # True when the mouse is hovered over the sphere
 var _hover = false:
 	get:
 		return _hover
 	set(value):
+		print("hover: ", value)
 		_hover = value
 		_update_materials()
 
@@ -26,18 +18,9 @@ var _active = false:
 	get:
 		return _active
 	set(value):
+		print("active: ", value)
 		_active = value
 		_update_materials()
-
-
-func _update_axis_guide():
-	if not is_inside_tree():
-		return
-		
-	if abs(axis.dot(Vector3.UP)) != 1.0:
-		%AxisGuide.look_at_from_position(global_position, global_position + axis)
-	else:
-		%AxisGuide.rotation_degrees = Vector3(90, 0, 0)
 
 
 func _update_materials():
@@ -53,7 +36,6 @@ func _update_materials():
 
 
 func _ready():
-	_update_axis_guide()
 	_update_materials()
 
 
@@ -61,13 +43,14 @@ func _input(event):
 	if not _active:
 		return
 		
+	print(event)
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed:
 		_active = false
 		
 	if event is InputEventMouseMotion:
 		# Get guide line segment
-		var p1 = global_position - 100*axis
-		var p2 = global_position + 100*axis
+		var p1 = global_transform.translated_local(Vector3(0, 0, 100)).origin
+		var p2 = global_transform.translated_local(Vector3(0, 0, -100)).origin
 		
 		# Get mouse ray line segment
 		var q1 = get_viewport().get_camera_3d().project_ray_origin(event.position)
@@ -79,10 +62,7 @@ func _input(event):
 		var new_position = results[0]
 		var old_position = global_position
 		
-		# Set position to that point
-		global_position = new_position
-		
-		var movement_along_axis = (new_position - old_position).dot(axis)
+		var movement_along_axis = (new_position - old_position).dot((p2-p1).normalized())
 		emit_signal("position_changed", movement_along_axis, new_position)
 
 
