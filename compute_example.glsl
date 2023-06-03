@@ -220,6 +220,139 @@ vec2 sdBezier(vec3 pos, vec3 A, vec3 B, vec3 C)
     return res;
 }
 
+float mapDepth( in vec3 pos ) {
+	int sp = -1;
+	int pos_sp = -1;
+	float stack[20];
+	vec3 pos_stack[20];
+	
+	for (int i=0; i<program.data_length; i++) {
+		if (program.data[i] == SPHERE) {
+			stack[++sp] = sdSphere(pos, intBitsToFloat(program.data[i+1]));
+			i++;
+		} else if (program.data[i] == ROUND_CONE) {
+			vec3 a = vec3(intBitsToFloat(program.data[i+1]), intBitsToFloat(program.data[i+2]), intBitsToFloat(program.data[i+3]));
+			vec3 b = vec3(intBitsToFloat(program.data[i+4]), intBitsToFloat(program.data[i+5]), intBitsToFloat(program.data[i+6]));
+
+			float r1 = intBitsToFloat(program.data[i+7]);
+			float r2 = intBitsToFloat(program.data[i+8]);
+
+			stack[++sp] = sdRoundCone(pos, a, b, r1, r2);
+			i += 8;
+		} else if (program.data[i] == BOX) {
+			vec3 b = vec3(
+				intBitsToFloat(program.data[i+1]),
+				intBitsToFloat(program.data[i+2]),
+				intBitsToFloat(program.data[i+3])
+			);
+			stack[sp+1] = sdBox(pos, b);
+			
+			i += 3;
+			sp++;
+		} else if (program.data[i] == QUAD_BEZIER) {
+			vec3 a = vec3(
+				intBitsToFloat(program.data[i+1]),
+				intBitsToFloat(program.data[i+2]),
+				intBitsToFloat(program.data[i+3])
+			);
+			vec3 b = vec3(
+				intBitsToFloat(program.data[i+4]),
+				intBitsToFloat(program.data[i+5]),
+				intBitsToFloat(program.data[i+6])
+			);
+			vec3 c = vec3(
+				intBitsToFloat(program.data[i+7]),
+				intBitsToFloat(program.data[i+8]),
+				intBitsToFloat(program.data[i+9])
+			);
+			
+			stack[sp+1] = sdBox(pos, b);
+
+			vec2 dt = sdBezier(pos, a, b, c);
+			
+			// TODO: we want to look at the t value slightly beyond 0 and 1 so that the bezier
+			// doesn't stop with a weird spherical nub
+			float t = clamp(dt.y, -0.05, 1.05);
+			
+			//float ra = (dt.y-1)*dt.y*(-0.5)*(dt.y-1)*dt.y*(-0.5)*10.0;
+			
+			float ra = -t*(t-1.0);
+			
+			ra *= 1.2;
+			ra += 0.2;
+			
+			ra = 0.1;
+			stack[sp+1] = dt.x-ra;
+			
+			i += 9;
+			sp++;
+		} else if (program.data[i] == ELLIPSOID) {
+			vec3 r = vec3(
+				intBitsToFloat(program.data[i+1]),
+				intBitsToFloat(program.data[i+2]),
+				intBitsToFloat(program.data[i+3])
+			);
+			stack[sp+1] = sdEllipsoid(pos, r);
+			i += 3;
+			sp++;
+		} else if (program.data[i] == UNION) {
+			stack[sp-1] = min(stack[sp], stack[sp-1]);
+			sp--;
+		} else if (program.data[i] == SUNION) {
+			float d1 = stack[sp];
+			float d2 = stack[sp-1];
+			
+			float new_d = smoothUnion(d1, d2, intBitsToFloat(program.data[i+1]));
+		
+			stack[sp-1] = new_d;
+			i++;
+			sp--;
+		} else if (program.data[i] == SUBTRACTION) {
+			stack[sp-1] = max(-stack[sp], stack[sp-1]);
+			sp--;
+		} else if (program.data[i] == SSUBTRACTION) {
+			stack[sp-1] = smoothSubtraction(stack[sp], stack[sp-1], intBitsToFloat(program.data[i+1]));
+			i++;
+			sp--;
+		} else if (program.data[i] == INTERSECTION) {
+			stack[sp-1] = max(stack[sp], stack[sp-1]);
+			sp--;
+		} else if (program.data[i] == SINTERSECTION) {
+			stack[sp-1] = smoothIntersection(stack[sp], stack[sp-1], intBitsToFloat(program.data[i+1]));
+			i++;
+			sp--;
+		} else if (program.data[i] == ROUND) {
+			stack[sp] = stack[sp] - intBitsToFloat(program.data[i+1]);
+			i++;
+		} else if (program.data[i] == POP_POS) {
+			pos = pos_stack[pos_sp--];
+		} else if (program.data[i] == MOV) {
+			pos -= vec3(
+				intBitsToFloat(program.data[i+1]),
+				intBitsToFloat(program.data[i+2]),
+				intBitsToFloat(program.data[i+3])
+			);
+			i += 3;
+		} else if (program.data[i] == MOV_ROT) {
+			pos_stack[++pos_sp] = pos;
+
+			mat4 transform;	
+
+			transform[0] = vec4(intBitsToFloat(program.data[i+1]), intBitsToFloat(program.data[i+2]), intBitsToFloat(program.data[i+3]), 0);
+			transform[1] = vec4(intBitsToFloat(program.data[i+4]), intBitsToFloat(program.data[i+5]), intBitsToFloat(program.data[i+6]), 0);
+			transform[2] = vec4(intBitsToFloat(program.data[i+7]), intBitsToFloat(program.data[i+8]), intBitsToFloat(program.data[i+9]), 0);
+			transform[3] = vec4(0, 0, 0, 1);
+
+			
+			pos = (vec4(pos, 1)*transform).xyz;
+			
+			i += 9;
+		}
+	}
+	
+	return stack[sp];
+}
+
 vec4 map( in vec3 pos ) {
 	int sp = -1;
 	int pos_sp = -1;
@@ -432,7 +565,7 @@ void main() {
 	for( int i=0; i<256; i++ )
 	{
 		vec3 pos = ro + t*rd;
-		float h = map(pos).w;
+		float h = mapDepth(pos);
 		if( h<0.0001 || t>tmax ) break;
 		t += h;
 	}

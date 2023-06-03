@@ -115,7 +115,7 @@ func _process(delta):
 			var collision_shape = CollisionShape3D.new()
 			collision_shape.shape = BoxShape3D.new()
 			collision_shape.shape.size = Vector3(size*2, size*2, size*2)
-			$WidgetViewport.add_child(node)
+			%WidgetViewport.add_child(node)
 			node.add_child(collision_shape)
 			node.global_transform = xform
 			node.position = mouse_3d
@@ -143,7 +143,7 @@ func _process(delta):
 			node.shape = "sphere"
 			node.size = size
 			node.position = mouse_3d
-			$WidgetViewport.add_child(node)
+			%WidgetViewport.add_child(node)
 			
 			new_obj = {
 				"shape": "sphere",
@@ -173,7 +173,7 @@ func _on_box_widget_box_changed(position, size):
 		{
 			"shape": "box",
 			"size": size*0.5,
-			"position": position + Vector3(3, 0, 0),
+			"position": position,
 			"rotation": Transform3D(),
 			"blending": 0.0,
 			"color": Color.RED,

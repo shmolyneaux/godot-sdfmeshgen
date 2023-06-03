@@ -66,6 +66,7 @@ offset_right = 2048.0
 offset_bottom = 1024.0
 
 [node name="WidgetViewport" type="SubViewport" parent="WidgetViewportContainer"]
+unique_name_in_owner = true
 own_world_3d = true
 world_3d = SubResource("World3D_12law")
 transparent_bg = true
