@@ -220,6 +220,9 @@ vec2 sdBezier(vec3 pos, vec3 A, vec3 B, vec3 C)
     return res;
 }
 
+#define POP_VEC3(arr, i) vec3(intBitsToFloat(arr[++i]), intBitsToFloat(arr[++i]), intBitsToFloat(arr[++i]))
+#define POP_F32(arr, i) intBitsToFloat(arr[++i])
+
 float mapDepth( in vec3 pos ) {
 	int sp = -1;
 	int pos_sp = -1;
@@ -228,51 +231,30 @@ float mapDepth( in vec3 pos ) {
 	
 	for (int i=0; i<program.data_length; i++) {
 		if (program.data[i] == SPHERE) {
-			stack[++sp] = sdSphere(pos, intBitsToFloat(program.data[i+1]));
-			i++;
+			stack[++sp] = sdSphere(pos, POP_F32(program.data, i));
 		} else if (program.data[i] == ROUND_CONE) {
-			vec3 a = vec3(intBitsToFloat(program.data[i+1]), intBitsToFloat(program.data[i+2]), intBitsToFloat(program.data[i+3]));
-			vec3 b = vec3(intBitsToFloat(program.data[i+4]), intBitsToFloat(program.data[i+5]), intBitsToFloat(program.data[i+6]));
-
-			float r1 = intBitsToFloat(program.data[i+7]);
-			float r2 = intBitsToFloat(program.data[i+8]);
-
-			stack[++sp] = sdRoundCone(pos, a, b, r1, r2);
-			i += 8;
+			stack[++sp] = sdRoundCone(
+				pos,
+				POP_VEC3(program.data, i),
+				POP_VEC3(program.data, i),
+				POP_F32(program.data, i),
+				POP_F32(program.data, i)
+			);
 		} else if (program.data[i] == BOX) {
-			vec3 b = vec3(
-				intBitsToFloat(program.data[i+1]),
-				intBitsToFloat(program.data[i+2]),
-				intBitsToFloat(program.data[i+3])
-			);
-			stack[sp+1] = sdBox(pos, b);
-			
-			i += 3;
-			sp++;
+			stack[++sp] = sdBox(pos, POP_VEC3(program.data, i));
 		} else if (program.data[i] == QUAD_BEZIER) {
-			vec3 a = vec3(
-				intBitsToFloat(program.data[i+1]),
-				intBitsToFloat(program.data[i+2]),
-				intBitsToFloat(program.data[i+3])
-			);
-			vec3 b = vec3(
-				intBitsToFloat(program.data[i+4]),
-				intBitsToFloat(program.data[i+5]),
-				intBitsToFloat(program.data[i+6])
-			);
-			vec3 c = vec3(
-				intBitsToFloat(program.data[i+7]),
-				intBitsToFloat(program.data[i+8]),
-				intBitsToFloat(program.data[i+9])
+			vec2 dt = sdBezier(
+				pos,
+				POP_VEC3(program.data, i),
+				POP_VEC3(program.data, i),
+				POP_VEC3(program.data, i)
 			);
 			
-			stack[sp+1] = sdBox(pos, b);
-
-			vec2 dt = sdBezier(pos, a, b, c);
-			
-			// TODO: we want to look at the t value slightly beyond 0 and 1 so that the bezier
+			// We want to look at the t value slightly beyond 0 and 1 so that the bezier
 			// doesn't stop with a weird spherical nub
 			float t = clamp(dt.y, -0.05, 1.05);
+			
+			// TODO: pass in thickness params
 			
 			//float ra = (dt.y-1)*dt.y*(-0.5)*(dt.y-1)*dt.y*(-0.5)*10.0;
 			
@@ -282,71 +264,38 @@ float mapDepth( in vec3 pos ) {
 			ra += 0.2;
 			
 			ra = 0.1;
-			stack[sp+1] = dt.x-ra;
-			
-			i += 9;
-			sp++;
+			stack[++sp] = dt.x-ra;
 		} else if (program.data[i] == ELLIPSOID) {
-			vec3 r = vec3(
-				intBitsToFloat(program.data[i+1]),
-				intBitsToFloat(program.data[i+2]),
-				intBitsToFloat(program.data[i+3])
-			);
-			stack[sp+1] = sdEllipsoid(pos, r);
-			i += 3;
-			sp++;
+			stack[++sp] = sdEllipsoid(pos, POP_VEC3(program.data, i));
 		} else if (program.data[i] == UNION) {
-			stack[sp-1] = min(stack[sp], stack[sp-1]);
-			sp--;
+			stack[--sp] = min(stack[sp+1], stack[sp]);
 		} else if (program.data[i] == SUNION) {
-			float d1 = stack[sp];
-			float d2 = stack[sp-1];
-			
-			float new_d = smoothUnion(d1, d2, intBitsToFloat(program.data[i+1]));
-		
-			stack[sp-1] = new_d;
-			i++;
-			sp--;
+			stack[--sp] = smoothUnion(stack[sp+1], stack[sp], POP_F32(program.data, i));
 		} else if (program.data[i] == SUBTRACTION) {
-			stack[sp-1] = max(-stack[sp], stack[sp-1]);
-			sp--;
+			stack[--sp] = max(-stack[sp+1], stack[sp]);
 		} else if (program.data[i] == SSUBTRACTION) {
-			stack[sp-1] = smoothSubtraction(stack[sp], stack[sp-1], intBitsToFloat(program.data[i+1]));
-			i++;
-			sp--;
+			stack[--sp] = smoothSubtraction(stack[sp+1], stack[sp], POP_F32(program.data, i));
 		} else if (program.data[i] == INTERSECTION) {
-			stack[sp-1] = max(stack[sp], stack[sp-1]);
-			sp--;
+			stack[--sp] = max(stack[sp+1], stack[sp]);
 		} else if (program.data[i] == SINTERSECTION) {
-			stack[sp-1] = smoothIntersection(stack[sp], stack[sp-1], intBitsToFloat(program.data[i+1]));
-			i++;
-			sp--;
+			stack[--sp] = smoothIntersection(stack[sp+1], stack[sp], POP_F32(program.data, i));
 		} else if (program.data[i] == ROUND) {
-			stack[sp] = stack[sp] - intBitsToFloat(program.data[i+1]);
-			i++;
+			stack[sp] = stack[sp] - POP_F32(program.data, i);
 		} else if (program.data[i] == POP_POS) {
 			pos = pos_stack[pos_sp--];
 		} else if (program.data[i] == MOV) {
-			pos -= vec3(
-				intBitsToFloat(program.data[i+1]),
-				intBitsToFloat(program.data[i+2]),
-				intBitsToFloat(program.data[i+3])
-			);
-			i += 3;
+			pos -= POP_VEC3(program.data, i);
 		} else if (program.data[i] == MOV_ROT) {
 			pos_stack[++pos_sp] = pos;
 
 			mat4 transform;	
 
-			transform[0] = vec4(intBitsToFloat(program.data[i+1]), intBitsToFloat(program.data[i+2]), intBitsToFloat(program.data[i+3]), 0);
-			transform[1] = vec4(intBitsToFloat(program.data[i+4]), intBitsToFloat(program.data[i+5]), intBitsToFloat(program.data[i+6]), 0);
-			transform[2] = vec4(intBitsToFloat(program.data[i+7]), intBitsToFloat(program.data[i+8]), intBitsToFloat(program.data[i+9]), 0);
+			transform[0] = vec4(POP_VEC3(program.data, i), 0);
+			transform[1] = vec4(POP_VEC3(program.data, i), 0);
+			transform[2] = vec4(POP_VEC3(program.data, i), 0);
 			transform[3] = vec4(0, 0, 0, 1);
-
 			
 			pos = (vec4(pos, 1)*transform).xyz;
-			
-			i += 9;
 		}
 	}
 	
@@ -400,14 +349,15 @@ vec4 map( in vec3 pos ) {
 				intBitsToFloat(program.data[i+8]),
 				intBitsToFloat(program.data[i+9])
 			);
-			
-			stack[sp+1] = vec4(color, sdBox(pos, b));
+
 
 			vec2 dt = sdBezier(pos, a, b, c);
 			
-			// TODO: we want to look at the t value slightly beyond 0 and 1 so that the bezier
+			// We want to look at the t value slightly beyond 0 and 1 so that the bezier
 			// doesn't stop with a weird spherical nub
 			float t = clamp(dt.y, -0.05, 1.05);
+			
+			// TODO: pass in thickness params
 			
 			//float ra = (dt.y-1)*dt.y*(-0.5)*(dt.y-1)*dt.y*(-0.5)*10.0;
 			
