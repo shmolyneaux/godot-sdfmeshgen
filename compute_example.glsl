@@ -82,6 +82,11 @@ program;
 layout(r32f, binding = 3) restrict uniform image2D depthOutput;
 layout(rgba32f, binding = 4) restrict uniform image2D normalOutput;
 
+struct SdfSurface {
+    vec3 color;
+    int id;
+};
+
 float cro( in vec2 a, in vec2 b ) { return a.x*b.y - a.y*b.x; }
 float dot2( in vec2 v ) { return dot(v,v); }
 float dot2( in vec3 v ) { return dot(v,v); }
@@ -302,7 +307,7 @@ float mapDepth( in vec3 pos ) {
 	return stack[sp];
 }
 
-vec4 map( in vec3 pos ) {
+SdfSurface mapSurface( in vec3 pos ) {
 	int sp = -1;
 	int pos_sp = -1;
 	vec4 stack[20];
@@ -474,19 +479,24 @@ vec4 map( in vec3 pos ) {
 			i += 3;
 		}
 	}
+
+	SdfSurface surface;
+	surface.color = stack[sp].xyz;
+	surface.id = 42;
 	
-	return stack[sp];
+	return surface;
 }
+
 
 // https://iquilezles.org/articles/normalsSDF
 vec3 calcNormal( in vec3 pos )
 {
     vec2 e = vec2(1.0,-1.0)*0.5773;
     const float eps = 0.0005;
-    return normalize( e.xyy*map( pos + e.xyy*eps ).w + 
-					  e.yyx*map( pos + e.yyx*eps ).w + 
-					  e.yxy*map( pos + e.yxy*eps ).w + 
-					  e.xxx*map( pos + e.xxx*eps ).w );
+    return normalize( e.xyy*mapDepth( pos + e.xyy*eps ) + 
+					  e.yyx*mapDepth( pos + e.yyx*eps ) + 
+					  e.yxy*mapDepth( pos + e.yxy*eps ) + 
+					  e.xxx*mapDepth( pos + e.xxx*eps ) );
 }
 
 // The code we want to execute in each invocation
@@ -530,7 +540,7 @@ void main() {
 		nor = calcNormal(pos);
 		
 		float dif = clamp( dot(nor, vec3(0.575766, 0.628109, 0.523424)), 0.05, 1.0 );
-		vec3 diffuseColor = map(pos).xyz;
+		vec3 diffuseColor = mapSurface(pos).color.xyz;
 		
 		col = diffuseColor*dif;
 	}
