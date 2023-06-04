@@ -89,6 +89,29 @@ struct SdfSurface {
     uint id;
 };
 
+SdfSurface newSdfSurface(vec3 color, uint id) {
+	SdfSurface surface;
+	surface.color = color,
+	surface.id = id;
+	
+	return surface;
+}
+
+
+struct SdfFragment {
+    float depth;
+    SdfSurface surface;
+};
+
+SdfFragment newSdfFragment(vec3 color, float depth, uint id) {
+	SdfFragment fragment;
+	fragment.depth = depth;
+	fragment.surface.color = color;
+	fragment.surface.id = id;
+	
+	return fragment;
+}
+
 float cro( in vec2 a, in vec2 b ) { return a.x*b.y - a.y*b.x; }
 float dot2( in vec2 v ) { return dot(v,v); }
 float dot2( in vec3 v ) { return dot(v,v); }
@@ -312,14 +335,14 @@ float mapDepth( in vec3 pos ) {
 SdfSurface mapSurface( in vec3 pos ) {
 	int sp = -1;
 	int pos_sp = -1;
-	vec4 stack[20];
+	SdfFragment stack[20];
 	vec3 pos_stack[20];
 	
 	vec3 color = vec3(0.5, 0.5, 0.5);
 	
 	for (int i=0; i<program.data_length; i++) {
 		if (program.data[i] == SPHERE) {
-			stack[++sp] = vec4(color, sdSphere(pos, intBitsToFloat(program.data[i+1])));
+			stack[++sp] = newSdfFragment(color, sdSphere(pos, intBitsToFloat(program.data[i+1])), i);
 			i++;
 		} else if (program.data[i] == ROUND_CONE) {
 			vec3 a = vec3(intBitsToFloat(program.data[i+1]), intBitsToFloat(program.data[i+2]), intBitsToFloat(program.data[i+3]));
@@ -328,7 +351,7 @@ SdfSurface mapSurface( in vec3 pos ) {
 			float r1 = intBitsToFloat(program.data[i+7]);
 			float r2 = intBitsToFloat(program.data[i+8]);
 
-			stack[++sp] = vec4(color, sdRoundCone(pos, a, b, r1, r2));
+			stack[++sp] = newSdfFragment(color, sdRoundCone(pos, a, b, r1, r2), i);
 			i += 8;
 		} else if (program.data[i] == BOX) {
 			vec3 b = vec3(
@@ -336,7 +359,7 @@ SdfSurface mapSurface( in vec3 pos ) {
 				intBitsToFloat(program.data[i+2]),
 				intBitsToFloat(program.data[i+3])
 			);
-			stack[sp+1] = vec4(color, sdBox(pos, b));
+			stack[sp+1] = newSdfFragment(color, sdBox(pos, b), i);
 			
 			i += 3;
 			sp++;
@@ -374,7 +397,7 @@ SdfSurface mapSurface( in vec3 pos ) {
 			ra += 0.2;
 			
 			ra = 0.1;
-			stack[sp+1] = vec4(color, dt.x-ra);
+			stack[sp+1] = newSdfFragment(color, dt.x-ra, i);
 
 
 			
@@ -388,65 +411,65 @@ SdfSurface mapSurface( in vec3 pos ) {
 				intBitsToFloat(program.data[i+2]),
 				intBitsToFloat(program.data[i+3])
 			);
-			stack[sp+1] = vec4(color, sdEllipsoid(pos, r));
+			stack[sp+1] = newSdfFragment(color, sdEllipsoid(pos, r), i);
 			i += 3;
 			sp++;
 		} else if (program.data[i] == UNION) {
-			vec3 newColor = mix(stack[sp-1].xyz, stack[sp].xyz, 0.5 + 0.5*sign(stack[sp-1].w - stack[sp].w));
-			stack[sp-1] = vec4(newColor, min(stack[sp].w, stack[sp-1].w));
+			vec3 newColor = mix(stack[sp-1].surface.color, stack[sp].surface.color, 0.5 + 0.5*sign(stack[sp-1].depth - stack[sp].depth));
+			stack[sp-1] = newSdfFragment(newColor, min(stack[sp].depth, stack[sp-1].depth), i);
 			sp--;
 		} else if (program.data[i] == SUNION) {
-			vec3 c1 = stack[sp].xyz;
-			vec3 c2 = stack[sp-1].xyz;
-			float d1 = stack[sp].w;
-			float d2 = stack[sp-1].w;
+			vec3 c1 = stack[sp].surface.color;
+			vec3 c2 = stack[sp-1].surface.color;
+			float d1 = stack[sp].depth;
+			float d2 = stack[sp-1].depth;
 			float smoothness = intBitsToFloat(program.data[i+1]);
 			float interpolation = clamp(0.5 + 0.5 * (d2 - d1) / smoothness, 0.0, 1.0);
 			vec3 newColor = mix(c2, c1, interpolation);
 			
 			float new_d = smoothUnion(d1, d2, intBitsToFloat(program.data[i+1]));
 		
-			stack[sp-1] = vec4(newColor, new_d);
+			stack[sp-1] = newSdfFragment(newColor, new_d, interpolation < 0.5 ? stack[sp-1].surface.id : stack[sp].surface.id);
 			i++;
 			sp--;
 		} else if (program.data[i] == SUBTRACTION) {
-			vec3 newColor = mix(stack[sp-1].xyz, stack[sp].xyz, 0.5 - 0.5*sign(stack[sp-1].w + stack[sp].w));
-			stack[sp-1] = vec4(newColor, max(-stack[sp].w, stack[sp-1].w));
+			vec3 newColor = mix(stack[sp-1].surface.color, stack[sp].surface.color, 0.5 - 0.5*sign(stack[sp-1].depth + stack[sp].depth));
+			stack[sp-1] = newSdfFragment(newColor, max(-stack[sp].depth, stack[sp-1].depth), i);
 			sp--;
 		} else if (program.data[i] == SSUBTRACTION) {
-			vec3 c1 = stack[sp].xyz;
-			vec3 c2 = stack[sp-1].xyz;
-			float d1 = stack[sp].w;
-			float d2 = stack[sp-1].w;
+			vec3 c1 = stack[sp].surface.color;
+			vec3 c2 = stack[sp-1].surface.color;
+			float d1 = stack[sp].depth;
+			float d2 = stack[sp-1].depth;
 			float smoothness = intBitsToFloat(program.data[i+1]);
 			
 			float interpolation = clamp( 0.5 - 0.5*(d2+d1)/smoothness, 0.0, 1.0 );
 			
 			vec3 newColor = mix(c2, c1, interpolation);
 			
-			stack[sp-1] = vec4(newColor, smoothSubtraction(stack[sp].w, stack[sp-1].w, intBitsToFloat(program.data[i+1])));
+			stack[sp-1] = newSdfFragment(newColor, smoothSubtraction(stack[sp].depth, stack[sp-1].depth, intBitsToFloat(program.data[i+1])), i);
 			i++;
 			sp--;
 		} else if (program.data[i] == INTERSECTION) {
-			vec3 newColor = mix(stack[sp-1].xyz, stack[sp].xyz, 0.5 - 0.5*sign(stack[sp-1].w - stack[sp].w));
-			stack[sp-1] = vec4(newColor, max(stack[sp].w, stack[sp-1].w));
+			vec3 newColor = mix(stack[sp-1].surface.color, stack[sp].surface.color, 0.5 - 0.5*sign(stack[sp-1].depth - stack[sp].depth));
+			stack[sp-1] = newSdfFragment(newColor, max(stack[sp].depth, stack[sp-1].depth), i);
 			sp--;
 		} else if (program.data[i] == SINTERSECTION) {
-			vec3 c1 = stack[sp].xyz;
-			vec3 c2 = stack[sp-1].xyz;
-			float d1 = stack[sp].w;
-			float d2 = stack[sp-1].w;
+			vec3 c1 = stack[sp].surface.color;
+			vec3 c2 = stack[sp-1].surface.color;
+			float d1 = stack[sp].depth;
+			float d2 = stack[sp-1].depth;
 			float smoothness = intBitsToFloat(program.data[i+1]);
 			
 			float interpolation = clamp( 0.5 - 0.5*(d2-d1)/smoothness, 0.0, 1.0 );
 			
 			vec3 newColor = mix(c2, c1, interpolation);
 			
-			stack[sp-1] = vec4(newColor, smoothIntersection(stack[sp].w, stack[sp-1].w, intBitsToFloat(program.data[i+1])));
+			stack[sp-1] = newSdfFragment(newColor, smoothIntersection(stack[sp].depth, stack[sp-1].depth, intBitsToFloat(program.data[i+1])), i);
 			i++;
 			sp--;
 		} else if (program.data[i] == ROUND) {
-			stack[sp] = vec4(color, stack[sp].w - intBitsToFloat(program.data[i+1]));
+			stack[sp] = newSdfFragment(color, stack[sp].depth - intBitsToFloat(program.data[i+1]), i);
 			i++;
 		} else if (program.data[i] == POP_POS) {
 			pos = pos_stack[pos_sp--];
@@ -481,12 +504,8 @@ SdfSurface mapSurface( in vec3 pos ) {
 			i += 3;
 		}
 	}
-
-	SdfSurface surface;
-	surface.color = stack[sp].xyz;
-	surface.id = 42;
 	
-	return surface;
+	return newSdfSurface(stack[sp].surface.color, stack[sp].surface.id);
 }
 
 

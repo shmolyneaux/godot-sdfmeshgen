@@ -70,6 +70,7 @@ var pipeline
 var color_data: PackedFloat32Array
 var depth_data: PackedFloat32Array
 var normal_data: PackedFloat32Array
+var id_data: PackedInt32Array
 var data_width: int
 var data_height: int
 
@@ -408,6 +409,22 @@ func screen_to_normal(screen_pos):
 		)
 	
 	return null
+	
+func screen_to_id(screen_pos):
+	assert(0.0 <= screen_pos.x)
+	assert(0.0 <= screen_pos.y)
+	assert(screen_pos.y <= 1.0)
+	assert(screen_pos.x <= 1.0)
+	
+	var x = int(screen_pos.x*data_width)
+	var y = int(screen_pos.y*data_height)
+	
+	var idx = y*data_width + x
+	
+	if id_data:
+		return id_data[idx]
+	
+	return null
 
 func _ready():
 	var width = 2048
@@ -639,28 +656,33 @@ func _process(delta):
 	var color_rid
 	var depth_rid
 	var normal_rid
+	var id_rid
 	var width
 	var height
 	if half_resolution:
 		color_rid = half_color_output_rid
 		depth_rid = half_depth_output_rid
 		normal_rid = half_normal_output_rid
+		id_rid = half_id_output_rid
 		width = half_depth_output_format.width
 		height = half_depth_output_format.height
 	else:
 		color_rid = color_output_rid
 		depth_rid = depth_output_rid
 		normal_rid = normal_output_rid
+		id_rid = id_output_rid
 		width = depth_output_format.width
 		height = depth_output_format.height
 
 	var color_output_bytes := rd.texture_get_data(color_rid, 0)
 	var depth_output_bytes := rd.texture_get_data(depth_rid, 0)
 	var normal_output_bytes := rd.texture_get_data(normal_rid, 0)
+	var id_output_bytes := rd.texture_get_data(id_rid, 0)
 	
 	color_data = color_output_bytes.to_float32_array()
 	depth_data = depth_output_bytes.to_float32_array()
 	normal_data = normal_output_bytes.to_float32_array()
+	id_data = id_output_bytes.to_int32_array()
 	data_height = height
 	data_width = width
 	

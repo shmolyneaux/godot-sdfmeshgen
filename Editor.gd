@@ -89,6 +89,9 @@ func _update_cursor():
 		%"3D Cursor".visible = true
 		%"3D Cursor".look_at_from_position(mouse_3d, mouse_3d+mouse_3d_normal)
 		
+		var id = %SdfViewer.screen_to_id(screen_pos)
+		if id:
+			print(id)
 	else:
 		mouse_3d = null
 		%"3D Cursor".visible = false
