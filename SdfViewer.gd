@@ -51,6 +51,14 @@ var half_normal_output_format : RDTextureFormat
 var half_normal_output_rid
 var half_normal_output_uniform
 
+var id_output_format : RDTextureFormat
+var id_output_rid
+var id_output_uniform
+
+var half_id_output_format : RDTextureFormat
+var half_id_output_rid
+var half_id_output_uniform
+
 var camera_xform_rid
 var camera_xform_uniform
 
@@ -458,6 +466,24 @@ func _ready():
 			RenderingDevice.TEXTURE_USAGE_CAN_UPDATE_BIT + \
 			RenderingDevice.TEXTURE_USAGE_CAN_COPY_FROM_BIT
 	
+	id_output_format = RDTextureFormat.new()
+	id_output_format.format = RenderingDevice.DATA_FORMAT_R32_UINT
+	id_output_format.width = width
+	id_output_format.height = height
+	id_output_format.usage_bits = \
+			RenderingDevice.TEXTURE_USAGE_STORAGE_BIT + \
+			RenderingDevice.TEXTURE_USAGE_CAN_UPDATE_BIT + \
+			RenderingDevice.TEXTURE_USAGE_CAN_COPY_FROM_BIT
+			
+	half_id_output_format = RDTextureFormat.new()
+	half_id_output_format.format = RenderingDevice.DATA_FORMAT_R32_UINT
+	half_id_output_format.width = width/16
+	half_id_output_format.height = height/16
+	half_id_output_format.usage_bits = \
+			RenderingDevice.TEXTURE_USAGE_STORAGE_BIT + \
+			RenderingDevice.TEXTURE_USAGE_CAN_UPDATE_BIT + \
+			RenderingDevice.TEXTURE_USAGE_CAN_COPY_FROM_BIT
+	
 	
 	# Load GLSL shader
 	var shader_file := load("res://compute_example.glsl")
@@ -470,6 +496,8 @@ func _ready():
 	half_depth_output_rid = rd.texture_create(half_depth_output_format, RDTextureView.new())
 	normal_output_rid = rd.texture_create(normal_output_format, RDTextureView.new())
 	half_normal_output_rid = rd.texture_create(half_normal_output_format, RDTextureView.new())
+	id_output_rid = rd.texture_create(id_output_format, RDTextureView.new())
+	half_id_output_rid = rd.texture_create(half_id_output_format, RDTextureView.new())
 
 	color_output_uniform = RDUniform.new()
 	color_output_uniform.uniform_type = RenderingDevice.UNIFORM_TYPE_IMAGE
@@ -500,6 +528,16 @@ func _ready():
 	half_normal_output_uniform.uniform_type = RenderingDevice.UNIFORM_TYPE_IMAGE
 	half_normal_output_uniform.binding = 4  # This matches the binding in the shader.
 	half_normal_output_uniform.add_id(half_normal_output_rid)
+
+	id_output_uniform = RDUniform.new()
+	id_output_uniform.uniform_type = RenderingDevice.UNIFORM_TYPE_IMAGE
+	id_output_uniform.binding = 5  # This matches the binding in the shader.
+	id_output_uniform.add_id(id_output_rid)
+	
+	half_id_output_uniform = RDUniform.new()
+	half_id_output_uniform.uniform_type = RenderingDevice.UNIFORM_TYPE_IMAGE
+	half_id_output_uniform.binding = 5  # This matches the binding in the shader.
+	half_id_output_uniform.add_id(half_id_output_rid)
 
 	var camera_data := PackedFloat32Array(
 		[
@@ -537,8 +575,8 @@ func _ready():
 
 	shader = rd.shader_create_from_spirv(shader_spirv)
 	pipeline = rd.compute_pipeline_create(shader)
-	uniform_set = rd.uniform_set_create([color_output_uniform, camera_xform_uniform, object_info_uniform, depth_output_uniform, normal_output_uniform], shader, 0)
-	half_uniform_set = rd.uniform_set_create([half_color_output_uniform, camera_xform_uniform, object_info_uniform, half_depth_output_uniform, half_normal_output_uniform], shader, 0)
+	uniform_set = rd.uniform_set_create([color_output_uniform, camera_xform_uniform, object_info_uniform, depth_output_uniform, normal_output_uniform, id_output_uniform], shader, 0)
+	half_uniform_set = rd.uniform_set_create([half_color_output_uniform, camera_xform_uniform, object_info_uniform, half_depth_output_uniform, half_normal_output_uniform, half_id_output_uniform], shader, 0)
 
 
 # Called when the node enters the scene tree for the first time.

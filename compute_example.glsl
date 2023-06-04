@@ -82,9 +82,11 @@ program;
 layout(r32f, binding = 3) restrict uniform image2D depthOutput;
 layout(rgba32f, binding = 4) restrict uniform image2D normalOutput;
 
+layout(r32ui, binding = 5) restrict uniform uimage2D idOutput;
+
 struct SdfSurface {
     vec3 color;
-    int id;
+    uint id;
 };
 
 float cro( in vec2 a, in vec2 b ) { return a.x*b.y - a.y*b.x; }
@@ -534,13 +536,16 @@ void main() {
 	// shading/lighting	
 	vec3 col = vec3(0.0);
 	vec3 nor;
+	uint id;
 	if( t<tmax )
 	{
 		vec3 pos = ro + t*rd;
 		nor = calcNormal(pos);
 		
 		float dif = clamp( dot(nor, vec3(0.575766, 0.628109, 0.523424)), 0.05, 1.0 );
-		vec3 diffuseColor = mapSurface(pos).color.xyz;
+		SdfSurface surface = mapSurface(pos);
+		vec3 diffuseColor = surface.color.xyz;
+		id = surface.id;
 		
 		col = diffuseColor*dif;
 	}
@@ -554,4 +559,5 @@ void main() {
 	imageStore(colorOutput, fragCoord, vec4( col, alpha ));
 	imageStore(depthOutput, fragCoord, vec4( t, 0.0, 0.0, 0.0 ));
 	imageStore(normalOutput, fragCoord, vec4( nor, alpha ));
+	imageStore(idOutput, fragCoord, uvec4(id));
 }
